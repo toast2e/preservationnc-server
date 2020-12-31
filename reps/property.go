@@ -12,7 +12,7 @@ type Site struct {
 	City      string  `json:"city"`
 	State     string  `json:"state"`
 	Zip       string  `json:"zip"`
-	Longitute float32 `json:"longitude"`
+	Longitude float32 `json:"longitude"`
 	Latitude  float32 `json:"latitude"`
 }
 
