@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	phttp "github.com/toast2e/preservationnc-server/http"
 	"github.com/toast2e/preservationnc-server/reps"
@@ -27,6 +28,22 @@ func main() {
 	if route == "" {
 		route = "/preservationnc"
 	}
+
+	client := http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Get("https://www.presnc.org/property-listing/all-properties/")
+	if err != nil {
+		log.Fatal(err)
+	}
+	if resp.StatusCode != 200 {
+		log.Fatal(fmt.Sprintf("unexpected response from server: %s", resp.Status))
+	}
+	bodyBytes := make([]byte, 1000000)
+	n, err := resp.Body.Read(bodyBytes)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("read %d bytes from server\n", n)
+	log.Printf("%s", string(bodyBytes))
 
 	http.HandleFunc(fmt.Sprintf("%s/properties", route), phttp.GetAllPropertiesHandler)
 	log.Printf("Server started on port %s", port)
