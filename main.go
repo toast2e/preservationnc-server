@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	phtml "github.com/toast2e/preservationnc-server/html"
 	phttp "github.com/toast2e/preservationnc-server/http"
 	"github.com/toast2e/preservationnc-server/reps"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -30,20 +31,12 @@ func main() {
 	}
 
 	client := http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Get("https://www.presnc.org/property-listing/all-properties/")
+	crawler := phtml.NewCrawler(client)
+	props, err := crawler.FindProperties()
 	if err != nil {
 		log.Fatal(err)
 	}
-	if resp.StatusCode != 200 {
-		log.Fatal(fmt.Sprintf("unexpected response from server: %s", resp.Status))
-	}
-	bodyBytes := make([]byte, 1000000)
-	n, err := resp.Body.Read(bodyBytes)
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Printf("read %d bytes from server\n", n)
-	log.Printf("%s", string(bodyBytes))
+	log.Printf("found properties = %v", props)
 
 	http.HandleFunc(fmt.Sprintf("%s/properties", route), phttp.GetAllPropertiesHandler)
 	log.Printf("Server started on port %s", port)
@@ -83,8 +76,10 @@ func setupDB(ctx context.Context) context.Context {
 	}
 	log.Printf("ID = %s\n", res.InsertedID)
 
-	return context.WithValue(ctx, "mongodb:client", client)
+	return context.WithValue(ctx, mongoClientContextKey("mongodb:client"), client)
 }
+
+type mongoClientContextKey string
 
 func shutdown(ctx context.Context) {
 	mongoClient, ok := ctx.Value("mongodb:client").(mongo.Client)
