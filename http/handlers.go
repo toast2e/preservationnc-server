@@ -14,10 +14,11 @@ var (
 			Description: "testDescription",
 			Price:       200000.00,
 			Location: reps.Site{
-				Address: reps.Address{
-					Number: "123",
-					Street: "Fake Street",
-				},
+				// Address: reps.Address{
+				// 	Number: "123",
+				// 	Street: "Fake Street",
+				// },
+				Address:   "123 Fake Street",
 				City:      "Raleigh",
 				State:     "North Carolina",
 				Zip:       "12345",
@@ -30,10 +31,11 @@ var (
 			Description: "this property is in kannapolis",
 			Price:       100000.00,
 			Location: reps.Site{
-				Address: reps.Address{
-					Number: "321",
-					Street: "teertS ekaF",
-				},
+				// Address: reps.Address{
+				// 	Number: "321",
+				// 	Street: "teertS ekaF",
+				// },
+				Address:   "321 teertS ekaF",
 				City:      "Kannpolis",
 				State:     "North Carolina",
 				Zip:       "54321",

@@ -60,10 +60,11 @@ func setupDB(ctx context.Context) context.Context {
 		Description: "testDescription",
 		Price:       200000.00,
 		Location: reps.Site{
-			Address: reps.Address{
-				Number: "123",
-				Street: "Fake Street",
-			},
+			// Address: reps.Address{
+			// 	Number: "123",
+			// 	Street: "Fake Street",
+			// },
+			Address:   "123 Fake Street",
 			City:      "Raleigh",
 			State:     "North Carolina",
 			Zip:       "12345",

@@ -16,5 +16,11 @@ func TestPropertyFromLink(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, "fakeId", prop.ID)
 		assert.Equal(t, "Godette Hotel", prop.Name)
+		assert.Equal(t, "400 Pollock Street", prop.Location.Address)
+		assert.Equal(t, "Beaufort", prop.Location.City)
+		assert.Equal(t, "NC", prop.Location.State)
+		assert.Equal(t, "28516", prop.Location.Zip)
+		assert.Equal(t, "Carteret County", prop.Location.County)
+		assert.Equal(t, float64(250000), prop.Price)
 	})
 }

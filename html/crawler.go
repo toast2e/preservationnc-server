@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/toast2e/preservationnc-server/reps"
@@ -132,6 +133,90 @@ func (c *Crawler) propertyFromLink(id string, url string) (reps.Property, error)
 	}
 	log.Printf("found token: %v", token)
 
+	// find the street address
+	token, err = c.findTokenWithAttributeValue("span", "class", "street-address", tokenizer)
+	if err != nil {
+		return reps.Property{}, err
+	}
+	log.Printf("found token: %v", token)
+
+	token, err = c.findTokenType(html.TextToken, tokenizer)
+	if err != nil {
+		return reps.Property{}, err
+	}
+	prop.Location.Address = strings.TrimSpace(token.Data)
+
+	// find the city
+	token, err = c.findTokenWithAttributeValue("span", "class", "locality", tokenizer)
+	if err != nil {
+		return reps.Property{}, err
+	}
+	log.Printf("found token: %v", token)
+
+	token, err = c.findTokenType(html.TextToken, tokenizer)
+	if err != nil {
+		return reps.Property{}, err
+	}
+	prop.Location.City = strings.TrimSpace(token.Data)
+
+	// find the state
+	token, err = c.findTokenWithAttributeValue("span", "class", "region", tokenizer)
+	if err != nil {
+		return reps.Property{}, err
+	}
+	log.Printf("found token: %v", token)
+
+	token, err = c.findTokenType(html.TextToken, tokenizer)
+	if err != nil {
+		return reps.Property{}, err
+	}
+	prop.Location.State = strings.TrimSpace(token.Data)
+
+	// find the zip
+	token, err = c.findTokenWithAttributeValue("span", "class", "postal-code", tokenizer)
+	if err != nil {
+		return reps.Property{}, err
+	}
+	log.Printf("found token: %v", token)
+
+	token, err = c.findTokenType(html.TextToken, tokenizer)
+	if err != nil {
+		return reps.Property{}, err
+	}
+	prop.Location.Zip = strings.TrimSpace(token.Data)
+
+	// find the county
+	token, err = c.findTokenWithAttributeValue("span", "class", "county", tokenizer)
+	if err != nil {
+		return reps.Property{}, err
+	}
+	log.Printf("found token: %v", token)
+
+	token, err = c.findTokenType(html.TextToken, tokenizer)
+	if err != nil {
+		return reps.Property{}, err
+	}
+	prop.Location.County = strings.TrimSpace(token.Data)
+
+	// find the price which should be the next <li/> tag
+	token, err = c.findStartTokenData("li", tokenizer)
+	if err != nil {
+		return reps.Property{}, err
+	}
+	log.Printf("found token: %v", token)
+
+	token, err = c.findTokenType(html.TextToken, tokenizer)
+	if err != nil {
+		return reps.Property{}, err
+	}
+	priceString := strings.TrimSpace(token.Data)
+	priceString = priceString[1:]
+	priceString = strings.ReplaceAll(priceString, ",", "")
+	prop.Price, err = strconv.ParseFloat(priceString, 32)
+	if err != nil {
+		return reps.Property{}, err
+	}
+
 	return prop, nil
 
 }
@@ -182,6 +267,28 @@ func (c *Crawler) findTokenData(data string, tokenizer *html.Tokenizer) (html.To
 		// find property tokens
 		token := tokenizer.Token()
 		if token.Data == data {
+			return token, nil
+		}
+	}
+}
+
+func (c *Crawler) findStartTokenData(data string, tokenizer *html.Tokenizer) (html.Token, error) {
+	for {
+		//get the next token type
+		tokenType := tokenizer.Next()
+
+		//if it's an error token, we either reached
+		//the end of the file, or the HTML was malformed
+		if tokenType == html.ErrorToken {
+			err := tokenizer.Err()
+			if err != nil {
+				return html.Token{}, err
+			}
+		}
+
+		// find property tokens
+		token := tokenizer.Token()
+		if token.Type == html.StartTagToken && token.Data == data {
 			return token, nil
 		}
 	}
