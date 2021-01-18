@@ -42,33 +42,35 @@ func (c *Crawler) FindProperties() ([]reps.Property, error) {
 	for {
 		nextTokenType, err := c.advanceNextToken(tokenizer)
 		if err != nil {
-			return nil, err
+			return properties, err
 		}
 		if nextTokenType == html.ErrorToken {
 			err := tokenizer.Err()
 			if err == io.EOF {
 				//end of the file, break out of the loop
 				break
+			} else {
+				return properties, err
 			}
+		}
 
-			// find property tokens
-			token := tokenizer.Token()
-			if token.Data == "div" {
-				isProp, id := c.containsProperty(token.Attr)
-				if isProp {
-					log.Printf("got property div token with id = %v %s %v %s", token.Type, token.Data, token.Attr, id)
-					// found a property, next <a> tag should be a link to the details
-					token, err := c.findStartTokenData("a", tokenizer)
-					if err != nil {
-						return nil, err
-					}
-					log.Printf("got anchor tag token for id = %v %s %v %s", token.Type, token.Data, token.Attr, id)
-					prop, err := c.propertyFromLink(id, token.Attr[0].Val)
-					if err != nil {
-						return nil, err
-					}
-					properties = append(properties, prop)
+		// find property tokens
+		token := tokenizer.Token()
+		if token.Data == "div" {
+			isProp, id := c.containsProperty(token.Attr)
+			if isProp {
+				log.Printf("got property div token with id = %v %s %v %s", token.Type, token.Data, token.Attr, id)
+				// found a property, next <a> tag should be a link to the details
+				token, err := c.findStartTokenData("a", tokenizer)
+				if err != nil {
+					return properties, err
 				}
+				log.Printf("got anchor tag token for id = %v %s %v %s", token.Type, token.Data, token.Attr, id)
+				prop, err := c.propertyFromLink(id, token.Attr[0].Val)
+				if err != nil {
+					return properties, err
+				}
+				properties = append(properties, prop)
 			}
 		}
 	}

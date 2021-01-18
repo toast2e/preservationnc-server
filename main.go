@@ -34,7 +34,7 @@ func main() {
 	crawler := phtml.NewCrawler(client)
 	props, err := crawler.FindProperties()
 	if err != nil {
-		log.Fatal(err)
+		log.Printf("ERROR: %s", err.Error())
 	}
 	log.Printf("found properties = %v", props)
 
