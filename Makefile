@@ -1,4 +1,4 @@
-all: clean windows linux docker
+all: clean test windows linux docker
 
 clean:
 	rm -rf build
