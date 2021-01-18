@@ -3,6 +3,9 @@ all: clean windows linux docker
 clean:
 	rm -rf build
 
+test:
+	go test ./...
+
 windows:
 	GOOS=windows GOARCH=amd64 go build -o build/windows/preservationnc-server.exe main.go
 
