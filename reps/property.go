@@ -1,5 +1,6 @@
 package reps
 
+// Property contains all values related to an individual property
 type Property struct {
 	ID          string  `json:"id"`
 	Name        string  `json:"name"`
@@ -8,6 +9,7 @@ type Property struct {
 	Location    Site    `json:"location"`
 }
 
+// Site represents where a property is located
 type Site struct {
 	Address   string  `json:"address"`
 	City      string  `json:"city"`
@@ -17,9 +19,3 @@ type Site struct {
 	Longitude float32 `json:"longitude"`
 	Latitude  float32 `json:"latitude"`
 }
-
-// type Address struct {
-// 	Number          string `json:"number"`
-// 	ApartmentNumber string `json:"apartmentNumber"`
-// 	Street          string `json:"street"`
-// }

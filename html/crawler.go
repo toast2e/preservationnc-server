@@ -40,46 +40,34 @@ func (c *Crawler) FindProperties() ([]reps.Property, error) {
 	tokenizer := html.NewTokenizer(resp.Body)
 	properties := make([]reps.Property, 0)
 	for {
-		//get the next token type
-		tokenType := tokenizer.Next()
-
-		//if it's an error token, we either reached
-		//the end of the file, or the HTML was malformed
-		if tokenType == html.ErrorToken {
+		nextTokenType, err := c.advanceNextToken(tokenizer)
+		if err != nil {
+			return nil, err
+		}
+		if nextTokenType == html.ErrorToken {
 			err := tokenizer.Err()
 			if err == io.EOF {
 				//end of the file, break out of the loop
 				break
 			}
-			//otherwise, there was an error tokenizing,
-			//which likely means the HTML was malformed.
-			//since this is a simple command-line utility,
-			//we can just use log.Fatalf() to report the error
-			//and exit the process with a non-zero status code
-			log.Fatalf("error tokenizing HTML: %v", tokenizer.Err())
-		}
 
-		// find property tokens
-		token := tokenizer.Token()
-		if token.Data == "div" {
-			isProp, id := c.containsProperty(token.Attr)
-			if isProp {
-				log.Printf("got property div token with id = %v %s %v %s", token.Type, token.Data, token.Attr, id)
-				// found a property, next <a> tag should be a link to the details
-				for {
-					tokenizer.Next()
-					token = tokenizer.Token()
-					if token.Type == html.StartTagToken {
-						if token.Data == "a" {
-							log.Printf("got anchor tag token for id = %v %s %v %s", token.Type, token.Data, token.Attr, id)
-							prop, err := c.propertyFromLink(id, token.Attr[0].Val)
-							if err != nil {
-								return nil, err
-							}
-							properties = append(properties, prop)
-							break
-						}
+			// find property tokens
+			token := tokenizer.Token()
+			if token.Data == "div" {
+				isProp, id := c.containsProperty(token.Attr)
+				if isProp {
+					log.Printf("got property div token with id = %v %s %v %s", token.Type, token.Data, token.Attr, id)
+					// found a property, next <a> tag should be a link to the details
+					token, err := c.findStartTokenData("a", tokenizer)
+					if err != nil {
+						return nil, err
 					}
+					log.Printf("got anchor tag token for id = %v %s %v %s", token.Type, token.Data, token.Attr, id)
+					prop, err := c.propertyFromLink(id, token.Attr[0].Val)
+					if err != nil {
+						return nil, err
+					}
+					properties = append(properties, prop)
 				}
 			}
 		}
@@ -118,7 +106,6 @@ func (c *Crawler) propertyFromLink(id string, url string) (reps.Property, error)
 	if err != nil {
 		return reps.Property{}, err
 	}
-	log.Printf("got h1 token: %v %s %v", token.Type, token.Data, token.Attr)
 
 	token, err = c.findTokenType(html.TextToken, tokenizer)
 	if err != nil {
@@ -131,14 +118,12 @@ func (c *Crawler) propertyFromLink(id string, url string) (reps.Property, error)
 	if err != nil {
 		return reps.Property{}, err
 	}
-	log.Printf("found token: %v", token)
 
 	// find the street address
 	token, err = c.findTokenWithAttributeValue("span", "class", "street-address", tokenizer)
 	if err != nil {
 		return reps.Property{}, err
 	}
-	log.Printf("found token: %v", token)
 
 	token, err = c.findTokenType(html.TextToken, tokenizer)
 	if err != nil {
@@ -151,7 +136,6 @@ func (c *Crawler) propertyFromLink(id string, url string) (reps.Property, error)
 	if err != nil {
 		return reps.Property{}, err
 	}
-	log.Printf("found token: %v", token)
 
 	token, err = c.findTokenType(html.TextToken, tokenizer)
 	if err != nil {
@@ -164,7 +148,6 @@ func (c *Crawler) propertyFromLink(id string, url string) (reps.Property, error)
 	if err != nil {
 		return reps.Property{}, err
 	}
-	log.Printf("found token: %v", token)
 
 	token, err = c.findTokenType(html.TextToken, tokenizer)
 	if err != nil {
@@ -177,7 +160,6 @@ func (c *Crawler) propertyFromLink(id string, url string) (reps.Property, error)
 	if err != nil {
 		return reps.Property{}, err
 	}
-	log.Printf("found token: %v", token)
 
 	token, err = c.findTokenType(html.TextToken, tokenizer)
 	if err != nil {
@@ -190,7 +172,6 @@ func (c *Crawler) propertyFromLink(id string, url string) (reps.Property, error)
 	if err != nil {
 		return reps.Property{}, err
 	}
-	log.Printf("found token: %v", token)
 
 	token, err = c.findTokenType(html.TextToken, tokenizer)
 	if err != nil {
@@ -203,20 +184,24 @@ func (c *Crawler) propertyFromLink(id string, url string) (reps.Property, error)
 	if err != nil {
 		return reps.Property{}, err
 	}
-	log.Printf("found token: %v", token)
 
 	token, err = c.findTokenType(html.TextToken, tokenizer)
 	if err != nil {
 		return reps.Property{}, err
 	}
 	priceString := strings.TrimSpace(token.Data)
-	priceString = priceString[1:]
+	// trim off the dollar sign if needed
+	if priceString[0] == '$' {
+		priceString = priceString[1:]
+	}
+	// remove any commas
 	priceString = strings.ReplaceAll(priceString, ",", "")
 	prop.Price, err = strconv.ParseFloat(priceString, 32)
 	if err != nil {
 		return reps.Property{}, err
 	}
 
+	log.Printf("Parsed property from %s: %v", url, prop)
 	return prop, nil
 
 }
@@ -232,16 +217,9 @@ func (c *Crawler) containsAttributeWithValue(key string, value string, attr []ht
 
 func (c *Crawler) findTokenType(tokenType html.TokenType, tokenizer *html.Tokenizer) (html.Token, error) {
 	for {
-		//get the next token type
-		nextTokenType := tokenizer.Next()
-
-		//if it's an error token, we either reached
-		//the end of the file, or the HTML was malformed
-		if nextTokenType == html.ErrorToken {
-			err := tokenizer.Err()
-			if err != nil {
-				return html.Token{}, err
-			}
+		nextTokenType, err := c.advanceNextToken(tokenizer)
+		if err != nil {
+			return html.Token{}, err
 		}
 
 		if nextTokenType == tokenType {
@@ -252,20 +230,12 @@ func (c *Crawler) findTokenType(tokenType html.TokenType, tokenizer *html.Tokeni
 
 func (c *Crawler) findTokenData(data string, tokenizer *html.Tokenizer) (html.Token, error) {
 	for {
-		//get the next token type
-		tokenType := tokenizer.Next()
-
-		//if it's an error token, we either reached
-		//the end of the file, or the HTML was malformed
-		if tokenType == html.ErrorToken {
-			err := tokenizer.Err()
-			if err != nil {
-				return html.Token{}, err
-			}
+		_, err := c.advanceNextToken(tokenizer)
+		if err != nil {
+			return html.Token{}, err
 		}
-
-		// find property tokens
 		token := tokenizer.Token()
+
 		if token.Data == data {
 			return token, nil
 		}
@@ -274,20 +244,12 @@ func (c *Crawler) findTokenData(data string, tokenizer *html.Tokenizer) (html.To
 
 func (c *Crawler) findStartTokenData(data string, tokenizer *html.Tokenizer) (html.Token, error) {
 	for {
-		//get the next token type
-		tokenType := tokenizer.Next()
-
-		//if it's an error token, we either reached
-		//the end of the file, or the HTML was malformed
-		if tokenType == html.ErrorToken {
-			err := tokenizer.Err()
-			if err != nil {
-				return html.Token{}, err
-			}
+		_, err := c.advanceNextToken(tokenizer)
+		if err != nil {
+			return html.Token{}, err
 		}
-
-		// find property tokens
 		token := tokenizer.Token()
+
 		if token.Type == html.StartTagToken && token.Data == data {
 			return token, nil
 		}
@@ -304,4 +266,20 @@ func (c *Crawler) findTokenWithAttributeValue(data string, attrKey string, attrV
 			return token, nil
 		}
 	}
+}
+
+func (c *Crawler) advanceNextToken(tokenizer *html.Tokenizer) (html.TokenType, error) {
+	//get the next token type
+	tokenType := tokenizer.Next()
+
+	//if it's an error token, we either reached
+	//the end of the file, or the HTML was malformed
+	if tokenType == html.ErrorToken {
+		err := tokenizer.Err()
+		if err != nil {
+			return tokenType, err
+		}
+	}
+
+	return tokenType, nil
 }
