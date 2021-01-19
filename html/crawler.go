@@ -66,6 +66,7 @@ func (c *Crawler) FindProperties() ([]reps.Property, error) {
 					return properties, err
 				}
 				log.Printf("got anchor tag token for id = %v %s %v %s", token.Type, token.Data, token.Attr, id)
+				// TODO one or more of the properties is formatted differently than the others because of course it is FIXIT
 				prop, err := c.propertyFromLink(id, token.Attr[0].Val)
 				if err != nil {
 					return properties, err

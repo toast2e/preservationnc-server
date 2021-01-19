@@ -6,19 +6,18 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"time"
 
-	phtml "github.com/toast2e/preservationnc-server/html"
 	phttp "github.com/toast2e/preservationnc-server/http"
-	"github.com/toast2e/preservationnc-server/reps"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	pmongo "github.com/toast2e/preservationnc-server/mongo"
 )
 
 func main() {
 	ctx := context.Background()
-	ctx = setupDB(ctx)
-	defer shutdown(ctx)
+	ctx, err := pmongo.SetupClient(ctx)
+	if err != nil {
+		log.Fatalf("failed to setup db client: %s", err.Error())
+	}
+	defer pmongo.Shutdown(ctx)
 
 	port := os.Getenv("SERVER_PORT")
 	if port == "" {
@@ -30,57 +29,36 @@ func main() {
 		route = "/preservationnc"
 	}
 
-	client := http.Client{Timeout: 10 * time.Second}
-	crawler := phtml.NewCrawler(client)
-	props, err := crawler.FindProperties()
-	if err != nil {
-		log.Printf("ERROR: %s", err.Error())
-	}
-	log.Printf("found properties = %v", props)
+	// TODO uncomment after figuring out db stuff
+	//client := http.Client{Timeout: 10 * time.Second}
+	//crawler := phtml.NewCrawler(client)
+	//props, err := crawler.FindProperties()
+	//if err != nil {
+	//	log.Printf("ERROR: %s", err.Error())
+	//}
+	//log.Printf("found properties = %v", props)
+	//pmongo.SaveProperties(ctx, props)
 
-	http.HandleFunc(fmt.Sprintf("%s/properties", route), phttp.GetAllPropertiesHandler)
+	// TODO remove this after figuring out db stuff
+	err = pmongo.SaveProperties(ctx, phttp.DummyProps)
+	if err != nil {
+		log.Fatalf("Could not load initial properties: %s", err.Error())
+	}
+
+	mux := http.NewServeMux()
+	mux.HandleFunc(fmt.Sprintf("%s/properties", route), phttp.GetAllPropertiesHandler)
+	mux.HandleFunc(fmt.Sprintf("%s/delete", route), phttp.DeleteAll)
+	mux.HandleFunc(fmt.Sprintf("%s/reload", route), phttp.Reload)
+	updatedMux := addClientToRequestContext(ctx, mux)
+
 	log.Printf("Server started on port %s", port)
-	log.Fatal(http.ListenAndServe(":"+port, nil))
+	log.Fatal(http.ListenAndServe(":"+port, updatedMux))
 }
 
-func setupDB(ctx context.Context) context.Context {
-	client, err := mongo.NewClient(options.Client().ApplyURI("mongodb://db:27017"))
-	if err != nil {
-		log.Fatal(err)
-	}
-	err = client.Connect(ctx)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	db := client.Database("preservationnc")
-	properties := db.Collection("properties")
-	res, err := properties.InsertOne(ctx, reps.Property{
-		Name:        "raleighProperty1",
-		Description: "testDescription",
-		Price:       200000.00,
-		Location: reps.Site{
-			Address:   "123 Fake Street",
-			City:      "Raleigh",
-			State:     "North Carolina",
-			Zip:       "12345",
-			Latitude:  35.8436867,
-			Longitude: -78.7851406,
-		},
+func addClientToRequestContext(ctx context.Context, next http.Handler) http.Handler {
+	client, _ := pmongo.ClientFromContext(ctx)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r = r.WithContext(pmongo.NewClientContext(r.Context(), client))
+		next.ServeHTTP(w, r)
 	})
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Printf("ID = %s\n", res.InsertedID)
-
-	return context.WithValue(ctx, mongoClientContextKey("mongodb:client"), client)
-}
-
-type mongoClientContextKey string
-
-func shutdown(ctx context.Context) {
-	mongoClient, ok := ctx.Value("mongodb:client").(mongo.Client)
-	if ok {
-		mongoClient.Disconnect(ctx)
-	}
 }
