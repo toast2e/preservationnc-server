@@ -4,7 +4,7 @@ clean:
 	rm -rf build
 
 test:
-	go test ./...
+	go test ./... -cover
 
 windows:
 	GOOS=windows GOARCH=amd64 go build -o build/windows/preservationnc-server.exe main.go
