@@ -11,11 +11,11 @@ type Property struct {
 
 // Site represents where a property is located
 type Site struct {
-	Address   string  `json:"address"`
-	City      string  `json:"city"`
-	County    string  `json:"county"`
-	State     string  `json:"state"`
-	Zip       string  `json:"zip"`
-	Longitude float32 `json:"longitude"`
-	Latitude  float32 `json:"latitude"`
+	Address   string   `json:"address"`
+	City      string   `json:"city"`
+	County    string   `json:"county"`
+	State     string   `json:"state"`
+	Zip       string   `json:"zip"`
+	Longitude *float32 `json:"longitude,omitempty"`
+	Latitude  *float32 `json:"latitude,omitempty"`
 }

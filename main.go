@@ -29,22 +29,6 @@ func main() {
 		route = "/preservationnc"
 	}
 
-	// TODO uncomment after figuring out db stuff
-	//client := http.Client{Timeout: 10 * time.Second}
-	//crawler := phtml.NewCrawler(client)
-	//props, err := crawler.FindProperties()
-	//if err != nil {
-	//	log.Printf("ERROR: %s", err.Error())
-	//}
-	//log.Printf("found properties = %v", props)
-	//pmongo.SaveProperties(ctx, props)
-
-	// TODO remove this after figuring out db stuff
-	err = pmongo.SaveProperties(ctx, phttp.DummyProps)
-	if err != nil {
-		log.Fatalf("Could not load initial properties: %s", err.Error())
-	}
-
 	mux := http.NewServeMux()
 	mux.HandleFunc(fmt.Sprintf("%s/properties", route), phttp.GetAllPropertiesHandler)
 	mux.HandleFunc(fmt.Sprintf("%s/delete", route), phttp.DeleteAll)

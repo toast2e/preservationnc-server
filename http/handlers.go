@@ -4,8 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
+	"time"
 
+	"github.com/toast2e/preservationnc-server/html"
 	"github.com/toast2e/preservationnc-server/mongo"
 	"github.com/toast2e/preservationnc-server/reps"
 	"go.mongodb.org/mongo-driver/bson"
@@ -23,8 +26,8 @@ var (
 				City:      "Raleigh",
 				State:     "North Carolina",
 				Zip:       "12345",
-				Latitude:  35.8436867,
-				Longitude: -78.7851406,
+				Latitude:  float32Ptr(35.8436867),
+				Longitude: float32Ptr(-78.7851406),
 			},
 		},
 		{
@@ -36,12 +39,16 @@ var (
 				City:      "Kannpolis",
 				State:     "North Carolina",
 				Zip:       "54321",
-				Latitude:  35.4757665,
-				Longitude: -80.79953,
+				Latitude:  float32Ptr(35.4757665),
+				Longitude: float32Ptr(-80.79953),
 			},
 		},
 	}
 )
+
+func float32Ptr(value float32) *float32 {
+	return &value
+}
 
 // GetAllPropertiesHandler returns all properties
 func GetAllPropertiesHandler(w http.ResponseWriter, r *http.Request) {
@@ -96,8 +103,14 @@ func DeleteAll(w http.ResponseWriter, r *http.Request) {
 
 // Reload reloads all properties from the source
 func Reload(w http.ResponseWriter, r *http.Request) {
-	// TODO update this to actually pull from the preservationnc website
-	err := mongo.SaveProperties(r.Context(), DummyProps)
+	client := http.Client{Timeout: 10 * time.Second}
+	crawler := html.NewCrawler(client)
+	props, err := crawler.FindProperties()
+	if err != nil {
+		log.Printf("ERROR: %s", err.Error())
+	}
+	log.Printf("found properties = %v", props)
+	err = mongo.SaveProperties(r.Context(), props)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("failed to save properties: %s", err.Error())))
