@@ -40,12 +40,8 @@ func (c *Crawler) FindProperties() ([]reps.Property, error) {
 	tokenizer := html.NewTokenizer(resp.Body)
 	properties := make([]reps.Property, 0)
 	for {
-		nextTokenType, err := c.advanceNextToken(tokenizer)
+		_, err := c.advanceNextToken(tokenizer)
 		if err != nil {
-			return properties, err
-		}
-		if nextTokenType == html.ErrorToken {
-			err := tokenizer.Err()
 			if err == io.EOF {
 				//end of the file, break out of the loop
 				break
@@ -193,15 +189,17 @@ func (c *Crawler) propertyFromLink(id string, url string) (reps.Property, error)
 		return reps.Property{}, err
 	}
 	priceString := strings.TrimSpace(token.Data)
-	// trim off the dollar sign if needed
+	// only attempt to parse a price if the value starts with a '$'.
+	// not all properties include a price
 	if priceString[0] == '$' {
+		// trim off the dollar sign
 		priceString = priceString[1:]
-	}
-	// remove any commas
-	priceString = strings.ReplaceAll(priceString, ",", "")
-	prop.Price, err = strconv.ParseFloat(priceString, 32)
-	if err != nil {
-		return reps.Property{}, err
+		// remove any commas
+		priceString = strings.ReplaceAll(priceString, ",", "")
+		prop.Price, err = strconv.ParseFloat(priceString, 32)
+		if err != nil {
+			return reps.Property{}, err
+		}
 	}
 
 	log.Printf("Parsed property from %s: %v", url, prop)

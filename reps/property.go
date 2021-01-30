@@ -16,6 +16,6 @@ type Site struct {
 	County    string   `json:"county"`
 	State     string   `json:"state"`
 	Zip       string   `json:"zip"`
-	Longitude *float32 `json:"longitude,omitempty"`
-	Latitude  *float32 `json:"latitude,omitempty"`
+	Longitude *float64 `json:"longitude,omitempty"`
+	Latitude  *float64 `json:"latitude,omitempty"`
 }
